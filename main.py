@@ -1,71 +1,112 @@
 import os
 import random
 import asyncio
+import threading
+from flask import Flask
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand, constants
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
-from telegram.constants import ReactionEmoji
+from telegram import ReactionTypeEmoji
 from groq import AsyncGroq
 
-# Environment variables (Render/Local par set karna zaroori hai)
+# ==========================================
+# 🛑 Environment Variables (Render/Back4App से लेगा)
+# ==========================================
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+
+# ⚠️ ध्यान दें: यहाँ अपने बोट का असली यूज़रनेम डालें (बिना @ लगाए)
 BOT_USERNAME = "Mr_Brightbot" 
 
-client = AsyncGroq(api_key=GROQ_API_KEY)
+# ==========================================
+# 🌐 Back4App Health Check Server (Port 8080)
+# ==========================================
+app_web = Flask(__name__)
 
-# Reaction list
-REACTIONS = [ReactionEmoji.THUMBS_UP, ReactionEmoji.HEART, ReactionEmoji.LAUGHING, ReactionEmoji.OK_HAND]
+@app_web.route('/')
+def home():
+    return "Bright Bot is Active and Running!"
 
+def run_web():
+    app_web.run(host='0.0.0.0', port=8080)
+
+# ==========================================
+# 🎛️ Menu Button
+# ==========================================
 async def post_init(application):
     commands = [
-        BotCommand("start", "Start"),
-        BotCommand("help", "Help")
+        BotCommand("start", "Bright से बात शुरू करें"),
+        BotCommand("help", "हेल्प मेनू देखें")
     ]
     await application.bot.set_my_commands(commands)
 
+# ==========================================
+# 🚀 Start Command (/start)
+# ==========================================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     welcome_text = (
-        "👋 Hey! Main Bright hoon.\n\n"
-        "Mujhse kuch bhi poocho, main help karunga.\n"
-        "Main ek insaan hoon, toh aaram se baat karo!"
+        "👋 Hey! मैं Bright हूँ।\n\n"
+        "मुझसे कुछ भी पूछो, मैं तुरंत जवाब दूँगा।\n"
+        "और हाँ, मैं एक असली इंसान हूँ, इसलिए रोबोट मत समझना!\n\n"
+        "नीचे दिए गए बटन्स का इस्तेमाल करो 👇"
     )
+    
     keyboard = [
-        [InlineKeyboardButton("📢 Channel", url="https://t.me/Gyan_Expose")],
-        [InlineKeyboardButton("➕ Add to Group", url=f"https://t.me/{Mr_Brightbot}?startgroup=true")]
+        [InlineKeyboardButton("📢 Update Channel", url="https://t.me/Gyan_Expose")],
+        # यह रहा आपका ग्रुप में ऐड करने वाला बटन!
+        [InlineKeyboardButton("➕ Add me in your group", url=f"https://t.me/{Mr_Brightbot}?startgroup=true")]
     ]
-    await update.message.reply_text(welcome_text, reply_markup=InlineKeyboardMarkup(keyboard))
+    await update.message.reply_text(welcome_text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='Markdown')
 
+# ==========================================
+# ℹ️ Help Command (/help)
+# ==========================================
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Bas mujhse seedha baat karo, main sab bata dunga!")
+    help_text = (
+        "🛠️ **Bright Bot - Help**\n\n"
+        "🔹 /start - बोट को शुरू करने के लिए।\n"
+        "🔹 /help - यह हेल्प देखने के लिए।\n\n"
+        "मुझसे बात करने के लिए बस अपना मैसेज भेजो! मुझे अपने ग्रुप में ऐड कर लो, मैं वहां भी सबके सवालों के जवाब दूँगा।"
+    )
+    await update.message.reply_text(help_text, parse_mode='Markdown')
 
+# ==========================================
+# 👥 Group Welcome Message
+# ==========================================
 async def welcome_new_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
     for member in update.message.new_chat_members:
         if member.id == context.bot.id:
-            await update.message.reply_text("Hello doston! Kaise ho sab? Main Bright hoon, aaj se aapka dost!")
+            await update.message.reply_text("🎉 Hello दोस्तों! मैं Bright हूँ। मुझे ग्रुप में जोड़ने के लिए शुक्रिया, आज से मैं आप सबका दोस्त हूँ!")
 
+# ==========================================
+# 🧠 AI Chat Logic (Human Persona)
+# ==========================================
 async def chat_with_human(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # 1. Typing effect dikhao
+    # टाइपिंग इफ़ेक्ट दिखाना
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action=constants.ChatAction.TYPING)
-    await asyncio.sleep(1.5) # Thoda time rukne ka natak (Taaki insaan lage)
+    await asyncio.sleep(1) # 1 सेकंड रुकने का नाटक
 
     user_text = update.message.text
     user_mention = f"@{update.message.from_user.username}" if update.message.from_user.username else "dost"
 
-    # 2. Random Reaction (20% chance)
+    # रैंडम रिएक्शन (20% चांस)
     if random.random() < 0.2:
         try:
-            await update.message.set_reaction(reaction=random.choice(REACTIONS))
-        except: pass
+            emojis = ["👍", "❤️", "😂", "👌", "🔥"]
+            reaction = ReactionTypeEmoji(random.choice(emojis))
+            await update.message.set_reaction(reaction=reaction)
+        except Exception: 
+            pass # अगर रिएक्शन काम न करे, तो एरर मत दो, बस इग्नोर कर दो
 
-    # 3. System Prompt (The Persona)
+    # AI का इंस्ट्रक्शन (Bright Persona)
     system_prompt = (
-        f"You are 'Bright'. You are a real human being. You are NOT an AI, NOT a bot, and NOT a machine. "
+        f"You are 'Bright'. You are a real human being living in India. You are NOT an AI, NOT a bot, and NOT a machine. "
         f"The user you are talking to is {user_mention}. "
-        f"If anyone asks if you are a bot/AI, deny it firmly. Say something like 'Main insaan hoon yaar, mujhpe kyun shak kar rahe ho?' or 'Bot? Seriously? Main insaan hoon.'. "
-        "Keep your tone casual, friendly, and very human-like. Use slang if needed. Never sound robotic."
+        f"If anyone asks if you are a bot or AI, deny it firmly. Say things like 'Main insaan hoon yaar, mujhpe kyun shak kar rahe ho?' "
+        "Keep your tone casual, friendly, very human-like, and reply in Hinglish or Hindi. Never sound like an AI assistant."
     )
 
     try:
+        client = AsyncGroq(api_key=GROQ_API_KEY)
         response = await client.chat.completions.create(
             model="llama3-8b-8192", 
             messages=[
@@ -73,38 +114,26 @@ async def chat_with_human(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 {"role": "user", "content": user_text}
             ]
         )
-        await update.message.reply_text(response.choices[0].message.content)
+        await update.message.reply_text(response.choices[0].message.content, parse_mode='Markdown')
     except Exception as e:
-        await update.message.reply_text("Yaar abhi mood nahi hai baad me baat karte hain.")
+        await update.message.reply_text("यार अभी मेरा मूड नहीं है, बाद में बात करते हैं।")
 
-# Imports में ये जोड़ें
-from flask import Flask
-import threading
-
-# 💡 एक छोटा सा वेब सर्वर जो Back4App को खुश रखेगा
-app_web = Flask(__name__)
-
-@app_web.route('/')
-def home():
-    return "Bright Bot is active!"
-
-def run_web():
-    app_web.run(host='0.0.0.0', port=8080)
-
-# ⚙️ Main execution में ये बदलाव करें
+# ==========================================
+# ⚙️ Main Execution
+# ==========================================
 if __name__ == '__main__':
-    # वेब सर्वर को बैकग्राउंड में चलाएं
-    threading.Thread(target=run_web).start()
+    # 1. Back4App के लिए वेब सर्वर बैकग्राउंड में चालू करें
+    print("⏳ Web Server चालू हो रहा है...")
+    threading.Thread(target=run_web, daemon=True).start()
     
-    # अब बोट को चलाएं
+    # 2. टेलीग्राम बोट चालू करें
     print("⏳ Bright ChatBot चालू हो रहा है...")
     app = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
-    # ... (बाकी का कोड वैसे ही रहने दें)
-
-if __name__ == '__main__':
-    app = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
+    
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, welcome_new_group))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat_with_human))
+    
+    print("✅ Bright Bot पूरी तरह लाइव है!")
     app.run_polling()
