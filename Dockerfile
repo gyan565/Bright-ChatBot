@@ -1,15 +1,18 @@
-# Python ka official image use kar rahe hain
+# Python ka official image
 FROM python:3.9-slim
 
-# Working directory set karo
+# Working directory
 WORKDIR /app
 
-# Requirements file copy karo aur install karo
+# Requirements install karo
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Baaki saara code copy karo
 COPY . .
 
-# Bot start karne ka command
+# 💡 Yeh line zaroori hai (Back4App ko khush karne ke liye)
+EXPOSE 8080
+
+# Bot start karo
 CMD ["python", "main.py"]
