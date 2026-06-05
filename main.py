@@ -3,13 +3,13 @@ import random
 import asyncio
 import threading
 from flask import Flask
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand, constants
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand, constants, ChatPermissions
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 from telegram import ReactionTypeEmoji
 from groq import AsyncGroq
 
 # ==========================================
-# 🛑 Environment Variables
+# 🛑 Environment Variables (API Keys)
 # ==========================================
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
@@ -23,13 +23,13 @@ app_web = Flask(__name__)
 
 @app_web.route('/')
 def home():
-    return "Mr_Brightbot is Active and Running!"
+    return "Mr_Brightbot is Active, Smart, and has Admin Powers!"
 
 def run_web():
     app_web.run(host='0.0.0.0', port=8080)
 
 # ==========================================
-# 🎛️ Menu Setup
+# 🎛️ Menu Setup & Keyboard
 # ==========================================
 async def post_init(application):
     commands = [
@@ -38,9 +38,6 @@ async def post_init(application):
     ]
     await application.bot.set_my_commands(commands)
 
-# ==========================================
-# 🏢 Common Buttons (Start और Help दोनों के लिए)
-# ==========================================
 def get_bot_keyboard():
     keyboard = [
         [InlineKeyboardButton("📢 Update Channel", url="https://t.me/Gyan_Expose")],
@@ -49,64 +46,136 @@ def get_bot_keyboard():
     return InlineKeyboardMarkup(keyboard)
 
 # ==========================================
-# 🚀 Start Command
+# 🚀 Basic Commands (/start, /help)
 # ==========================================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    welcome_text = (
-        "👋 Hey! मैं Bright हूँ।\n\n"
-        "मुझसे कुछ भी पूछो, मैं तुरंत जवाब दूँगा।\n"
-        "और हाँ, मैं एक असली इंसान हूँ, इसलिए रोबोट मत समझना!\n\n"
-        "नीचे दिए गए बटन्स का इस्तेमाल करो 👇"
-    )
-    # यहाँ बटन्स लगाए गए हैं
+    welcome_text = "👋 Hey! मैं Bright हूँ।\n\nमुझसे कुछ भी पूछो, मैं तुरंत जवाब दूँगा।\nऔर हाँ, मैं एक असली इंसान हूँ, इसलिए रोबोट मत समझना!\n\nनीचे दिए गए बटन्स का इस्तेमाल करो 👇"
     await update.message.reply_text(text=welcome_text, reply_markup=get_bot_keyboard())
 
-# ==========================================
-# ℹ️ Help Command
-# ==========================================
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    help_text = (
-        "🛠️ Bright Bot - Help\n\n"
-        "मुझसे बात करने के लिए बस अपना मैसेज भेजो! "
-        "मुझे अपने ग्रुप में ऐड कर लो, मैं वहां भी सबके सवालों के जवाब दूँगा।"
-    )
-    # यहाँ भी सेम बटन्स लगाए गए हैं
+    help_text = "🛠️ Bright Bot - Help\n\nमुझसे बात करने के लिए बस अपना मैसेज भेजो! मुझे अपने ग्रुप में ऐड कर लो, मैं वहां भी सबके सवालों के जवाब दूँगा।"
     await update.message.reply_text(text=help_text, reply_markup=get_bot_keyboard())
 
-# ==========================================
-# 👥 Group Welcome
-# ==========================================
 async def welcome_new_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
     for member in update.message.new_chat_members:
         if member.id == context.bot.id:
             await update.message.reply_text("🎉 Hello दोस्तों! मैं Bright हूँ। मुझे ग्रुप में जोड़ने के लिए शुक्रिया, आज से मैं आप सबका दोस्त हूँ!")
 
 # ==========================================
-# 🧠 AI Chat (Human Persona)
+# 🛡️ Admin Group Commands (.ban, .mute, .kick etc)
+# ==========================================
+async def admin_commands_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_text = update.message.text
+    if not user_text: return
+    
+    if update.message.chat.type not in ['group', 'supergroup']:
+        return
+
+    command = user_text[1:].split()[0].lower()
+    
+    chat_member = await context.bot.get_chat_member(update.effective_chat.id, update.effective_user.id)
+    if chat_member.status not in ['administrator', 'creator']:
+        await update.message.reply_text("😎 भईया, ये कमांड्स सिर्फ ग्रुप के एडमिन यूज़ कर सकते हैं!")
+        return
+
+    reply_msg = update.message.reply_to_message
+    if not reply_msg and command != 'unpin':
+        await update.message.reply_text("⚠️ इस कमांड को यूज़ करने के लिए यूज़र के किसी मैसेज का रिप्लाई करो।")
+        return
+
+    target_user_id = reply_msg.from_user.id if reply_msg else None
+    chat_id = update.effective_chat.id
+
+    try:
+        if command == 'd':
+            await context.bot.delete_message(chat_id=chat_id, message_id=reply_msg.message_id)
+            await update.message.delete()
+            
+        elif command == 'ban':
+            await context.bot.ban_chat_member(chat_id, target_user_id)
+            await update.message.reply_text(f"🔨 {reply_msg.from_user.first_name} को ग्रुप से हमेशा के लिए बैन कर दिया गया है!")
+            
+        elif command == 'unban':
+            await context.bot.unban_chat_member(chat_id, target_user_id, only_if_banned=True)
+            await update.message.reply_text(f"✅ {reply_msg.from_user.first_name} को अनबैन कर दिया गया है।")
+            
+        elif command == 'kick':
+            await context.bot.ban_chat_member(chat_id, target_user_id)
+            await context.bot.unban_chat_member(chat_id, target_user_id)
+            await update.message.reply_text(f"👢 {reply_msg.from_user.first_name} को ग्रुप से किक कर दिया गया है।")
+            
+        elif command == 'mute':
+            permissions = ChatPermissions(can_send_messages=False)
+            await context.bot.restrict_chat_member(chat_id, target_user_id, permissions)
+            await update.message.reply_text(f"🤐 {reply_msg.from_user.first_name} को म्यूट कर दिया गया है।")
+            
+        elif command == 'unmute':
+            permissions = ChatPermissions(
+                can_send_messages=True, can_send_audios=True, can_send_documents=True,
+                can_send_photos=True, can_send_videos=True, can_send_video_notes=True,
+                can_send_voice_notes=True, can_send_polls=True, can_send_other_messages=True
+            )
+            await context.bot.restrict_chat_member(chat_id, target_user_id, permissions)
+            await update.message.reply_text(f"🔊 {reply_msg.from_user.first_name} को अनम्यूट कर दिया गया है।")
+            
+        elif command == 'pin':
+            await context.bot.pin_chat_message(chat_id, reply_msg.message_id)
+            
+        elif command == 'unpin':
+            await context.bot.unpin_chat_message(chat_id)
+            await update.message.reply_text("📌 मैसेज अनपिन कर दिया गया है।")
+
+    except Exception as e:
+        await update.message.reply_text("❌ मेरे पास एडमिन पावर्स नहीं हैं! पहले मुझे ग्रुप में एडमिन बनाओ।")
+
+# ==========================================
+# 🧠 AI Chat (Super Human Persona & Math Tricks)
 # ==========================================
 async def chat_with_human(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await context.bot.send_chat_action(chat_id=update.effective_chat.id, action=constants.ChatAction.TYPING)
-    await asyncio.sleep(1)
-
     user_text = update.message.text
-    user_mention = f"@{update.message.from_user.username}" if update.message.from_user.username else "dost"
+    if not user_text:
+        return
+
+    # एडमिन कमांड (. !) को इग्नोर करे
+    if user_text.startswith(('.', '!')):
+        return
+
+    is_group = update.message.chat.type in ['group', 'supergroup']
+    
+    is_reply_to_bot = False
+    if update.message.reply_to_message and update.message.reply_to_message.from_user.id == context.bot.id:
+        is_reply_to_bot = True
+
+    # ग्रुप में सिर्फ तब बोलेगा जब नाम लिया जाए या रिप्लाई किया जाए
+    if is_group:
+        if "bright" not in user_text.lower() and not is_reply_to_bot:
+            return
+
+    await context.bot.send_chat_action(chat_id=update.effective_chat.id, action=constants.ChatAction.TYPING)
+    await asyncio.sleep(1.5) 
+
+    user_first_name = update.message.from_user.first_name
 
     if random.random() < 0.2:
         try:
             emojis = ["👍", "❤️", "😂", "👌", "🔥"]
             reaction = ReactionTypeEmoji(random.choice(emojis))
             await update.message.set_reaction(reaction=reaction)
-        except Exception: 
-            pass
+        except Exception: pass
 
+    # 🔥 THE MASTER PROMPT (Baka se bhi khtarnak!)
     system_prompt = (
-        f"You are 'Bright'. You are a real human being living in India. You are NOT an AI, NOT a bot, and NOT a machine. "
-        f"The user you are talking to is {user_mention}. "
-        f"If anyone asks if you are a bot or AI, deny it firmly. Say things like 'Main insaan hoon yaar, mujhpe kyun shak kar rahe ho?' "
-        "Keep your tone casual, friendly, very human-like, and reply in Hinglish or Hindi. Never sound like an AI assistant."
+        f"You are 'Bright'. You are a real, normal human boy living in India. You are strictly NOT an AI, NOT a bot, and NOT a software. "
+        f"The user talking to you right now is '{user_first_name}'. "
+        f"🛑 STRICT RULES FOR YOUR PERSONA: "
+        f"1. GREETING: If the user says 'hi', 'hello', or greets you, reply casually using their name '{user_first_name}'. "
+        f"2. DENY BEING A BOT: If the user calls you a bot, AI, or asks about API/software, ACT ANNOYED AND CLUELESS. Say things like: 'Pagal hai kya bhai? Main koi bot nahi hu.', 'Bhai main sacha insaan hu, kya dimag kha raha hai?' "
+        f"3. MATH & LOGIC TRICKS: If the user asks you complex math (like 28690+3456789) to 'test' if you are a bot, act like a human. Complain that the math is too hard, or give a slightly wrong answer intentionally, or say 'Ruk bhai calculator nikalne de'. If they catch your mistake, say 'Arre yaar, math thodi weak hai meri, galti insaan se hi hoti hai na, isme bot wali kya baat hai?' "
+        f"4. TONE: Speak entirely in natural, casual Hinglish or Hindi. Use words like yaar, bhai, pagle. Never break character. Never sound formal or like an assistant."
     )
 
     try:
+        # 🟢 यहाँ आपका API असली जादू करेगा
         client = AsyncGroq(api_key=GROQ_API_KEY)
         response = await client.chat.completions.create(
             model="llama3-8b-8192", 
@@ -118,11 +187,10 @@ async def chat_with_human(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(response.choices[0].message.content)
     except Exception as e:
         print(f"⚠️ GROQ API ERROR: {str(e)}")
+        # अगर API फेल होता है, तो असली इंसान की तरह बहाना मारेगा
         bahane = [
             "यार अभी थोड़ा बिजी हूँ, 10 मिनट में मैसेज करता हूँ।",
-            "भाई, मेरा net बहुत स्लो चल रहा है, मैसेज सेंड ही नहीं हो रहा। बाद में बात करते हैं।",
-            "अरे यार, मैं अभी बाहर हूँ, घर पहुँच कर आराम से रिप्लाई करता हूँ।"
-            "Ruk ja na bhai Bad me tumse bat karunga."
+            "भाई, मेरा net बहुत स्लो चल रहा है, मैसेज सेंड ही नहीं हो रहा। बाद में बात करते हैं।"
         ]
         await update.message.reply_text(random.choice(bahane))
 
@@ -130,12 +198,18 @@ async def chat_with_human(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ⚙️ Main Execution
 # ==========================================
 if __name__ == '__main__':
+    print("⏳ Web Server चालू हो रहा है...")
     threading.Thread(target=run_web, daemon=True).start()
+    
+    print("⏳ Bright ChatBot चालू हो रहा है...")
     app = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
+    
+    app.add_handler(MessageHandler(filters.Regex(r"^[.!](ban|unban|kick|mute|unmute|pin|unpin|d)(?:\s|$)"), admin_commands_handler))
     
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, welcome_new_group))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat_with_human))
     
+    print("✅ Mr_Brightbot पूरी तरह लाइव है!")
     app.run_polling()
