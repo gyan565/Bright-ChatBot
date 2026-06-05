@@ -77,6 +77,30 @@ async def chat_with_human(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await update.message.reply_text("Yaar abhi mood nahi hai baad me baat karte hain.")
 
+# Imports में ये जोड़ें
+from flask import Flask
+import threading
+
+# 💡 एक छोटा सा वेब सर्वर जो Back4App को खुश रखेगा
+app_web = Flask(__name__)
+
+@app_web.route('/')
+def home():
+    return "Bright Bot is active!"
+
+def run_web():
+    app_web.run(host='0.0.0.0', port=8080)
+
+# ⚙️ Main execution में ये बदलाव करें
+if __name__ == '__main__':
+    # वेब सर्वर को बैकग्राउंड में चलाएं
+    threading.Thread(target=run_web).start()
+    
+    # अब बोट को चलाएं
+    print("⏳ Bright ChatBot चालू हो रहा है...")
+    app = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
+    # ... (बाकी का कोड वैसे ही रहने दें)
+
 if __name__ == '__main__':
     app = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
     app.add_handler(CommandHandler("start", start))
