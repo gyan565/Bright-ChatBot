@@ -14,7 +14,6 @@ from groq import AsyncGroq
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
-# ✅ यहाँ आपका असली यूज़रनेम सेट कर दिया गया है
 BOT_USERNAME = "Mr_Brightbot" 
 
 # ==========================================
@@ -40,32 +39,39 @@ async def post_init(application):
     await application.bot.set_my_commands(commands)
 
 # ==========================================
+# 🏢 Common Buttons (Start और Help दोनों के लिए)
+# ==========================================
+def get_bot_keyboard():
+    keyboard = [
+        [InlineKeyboardButton("📢 Update Channel", url="https://t.me/Gyan_Expose")],
+        [InlineKeyboardButton("➕ Add me in your group", url=f"https://t.me/{BOT_USERNAME}?startgroup=true")]
+    ]
+    return InlineKeyboardMarkup(keyboard)
+
+# ==========================================
 # 🚀 Start Command
 # ==========================================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    try:
-        welcome_text = (
-            "👋 Hey! मैं Bright हूँ।\n\n"
-            "मुझसे कुछ भी पूछो, मैं तुरंत जवाब दूँगा।\n"
-            "और हाँ, मैं एक असली इंसान हूँ, इसलिए रोबोट मत समझना!\n\n"
-            "नीचे दिए गए बटन्स का इस्तेमाल करो 👇"
-        )
-        
-        # बटन के लिए एकदम सही लिंक
-        keyboard = [
-            [InlineKeyboardButton("📢 Update Channel", url="https://t.me/Gyan_Expose")],
-            [InlineKeyboardButton("➕ Add me in your group", url=f"https://t.me/{BOT_USERNAME}?startgroup=true")]
-        ]
-        await update.message.reply_text(welcome_text, reply_markup=InlineKeyboardMarkup(keyboard))
-    except Exception as e:
-        await update.message.reply_text(f"❌ Start Error: {str(e)}")
+    welcome_text = (
+        "👋 Hey! मैं Bright हूँ।\n\n"
+        "मुझसे कुछ भी पूछो, मैं तुरंत जवाब दूँगा।\n"
+        "और हाँ, मैं एक असली इंसान हूँ, इसलिए रोबोट मत समझना!\n\n"
+        "नीचे दिए गए बटन्स का इस्तेमाल करो 👇"
+    )
+    # यहाँ बटन्स लगाए गए हैं
+    await update.message.reply_text(text=welcome_text, reply_markup=get_bot_keyboard())
 
 # ==========================================
 # ℹ️ Help Command
 # ==========================================
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    help_text = "🛠️ **Bright Bot - Help**\n\nमुझसे बात करने के लिए बस अपना मैसेज भेजो! मुझे अपने ग्रुप में ऐड कर लो, मैं वहां भी सबके सवालों के जवाब दूँगा।"
-    await update.message.reply_text(help_text, parse_mode='Markdown')
+    help_text = (
+        "🛠️ Bright Bot - Help\n\n"
+        "मुझसे बात करने के लिए बस अपना मैसेज भेजो! "
+        "मुझे अपने ग्रुप में ऐड कर लो, मैं वहां भी सबके सवालों के जवाब दूँगा।"
+    )
+    # यहाँ भी सेम बटन्स लगाए गए हैं
+    await update.message.reply_text(text=help_text, reply_markup=get_bot_keyboard())
 
 # ==========================================
 # 👥 Group Welcome
@@ -85,7 +91,6 @@ async def chat_with_human(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_text = update.message.text
     user_mention = f"@{update.message.from_user.username}" if update.message.from_user.username else "dost"
 
-    # रैंडम रिएक्शन (20% चांस)
     if random.random() < 0.2:
         try:
             emojis = ["👍", "❤️", "😂", "👌", "🔥"]
@@ -110,28 +115,22 @@ async def chat_with_human(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 {"role": "user", "content": user_text}
             ]
         )
-        await update.message.reply_text(response.choices[0].message.content, parse_mode='Markdown')
-        
+        await update.message.reply_text(response.choices[0].message.content)
     except Exception as e:
-        # 💡 अब बोट एकदम असली इंसान वाले बहाने मारेगा
+        print(f"⚠️ GROQ API ERROR: {str(e)}")
         bahane = [
             "यार अभी थोड़ा बिजी हूँ, 10 मिनट में मैसेज करता हूँ।",
-            "भाई, मेरा नेट बहुत स्लो चल रहा है, मैसेज सेंड ही नहीं हो रहा। बाद में बात करते हैं।",
+            "भाई, मेरा net बहुत स्लो चल रहा है, मैसेज सेंड ही नहीं हो रहा। बाद में बात करते हैं।",
             "अरे यार, मैं अभी बाहर हूँ, घर पहुँच कर आराम से रिप्लाई करता हूँ।"
+            "Ruk ja na bhai Bad me tumse bat karunga."
         ]
         await update.message.reply_text(random.choice(bahane))
-        
-        # 👨‍💻 (आपके लिए) असली एरर आपको Back4App के 'Logs' में दिख जाएगा, यूज़र को नहीं!
-        print(f"⚠️ API ERROR आ गया भाई: {str(e)}")
 
 # ==========================================
 # ⚙️ Main Execution
 # ==========================================
 if __name__ == '__main__':
-    print("⏳ Web Server चालू हो रहा है...")
     threading.Thread(target=run_web, daemon=True).start()
-    
-    print("⏳ Bright ChatBot चालू हो रहा है...")
     app = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
     
     app.add_handler(CommandHandler("start", start))
@@ -139,5 +138,4 @@ if __name__ == '__main__':
     app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, welcome_new_group))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat_with_human))
     
-    print("✅ Mr_Brightbot पूरी तरह लाइव है!")
     app.run_polling()
