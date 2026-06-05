@@ -26,7 +26,9 @@ def home():
     return "Mr_Brightbot is Active, Smart, and Stubborn!"
 
 def run_web():
-    app_web.run(host='0.0.0.0', port=8080)
+    # Render अपना पोर्ट 'PORT' नाम के वेरिएबल में देता है, अगर नहीं मिला तो 8080 यूज़ करेगा
+    port = int(os.environ.get("PORT", 8080))
+    app_web.run(host='0.0.0.0', port=port)
 
 # ==========================================
 # 🎛️ Menu Setup & Keyboard
