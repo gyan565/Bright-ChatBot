@@ -158,7 +158,7 @@ async def chat_with_human(update: Update, context: ContextTypes.DEFAULT_TYPE):
     for attempt in range(max_retries):
         try:
             response = await client.chat.completions.create(
-                model="llama3-8b-8192", 
+                model="llama-3.1-8b-instant",  # 👈 बस ये लाइन बदलनी है!
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_text}
