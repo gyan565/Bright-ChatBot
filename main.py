@@ -156,10 +156,16 @@ if __name__ == '__main__':
     threading.Thread(target=run_web, daemon=True).start()
     app = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
     
-    # 🎯 Naya Smart Filter: DM me sabka reply, Group me sirf Reply/Mention ka
+    # 🎯 1. DM Filter: Private chat में कोई कुछ भी बोले (चाहे रिप्लाई या डायरेक्ट), बोट जवाब देगा।
     dm_filter = filters.ChatType.PRIVATE
-    group_filter = filters.ChatType.GROUPS & (filters.REPLY | filters.Entity(constants.MessageEntityType.MENTION))
     
+    # 🎯 2. Name Catcher: ग्रुप में अगर कोई 'bright', 'karan' या '@mr_brightbot' लिखेगा, तो ये उसे पकड़ लेगा।
+    name_catch = filters.Regex(r'(?i)(\b(bright|karan)\b|@mr_brightbot)')
+    
+    # 🎯 3. Group Filter: ग्रुप में सिर्फ तभी रिप्लाई करेगा जब -> Reply किया हो, @Tag किया हो, या नाम (name_catch) लिया हो।
+    group_filter = filters.ChatType.GROUPS & (filters.REPLY | filters.Entity(constants.MessageEntityType.MENTION) | name_catch)
+    
+    # 🎯 4. Final Smart Filter: DM और Group दोनों के रूल्स को मिला दिया।
     final_smart_filter = dm_filter | group_filter
     
     app.add_handler(CommandHandler("start", start))
@@ -167,10 +173,9 @@ if __name__ == '__main__':
     app.add_handler(CommandHandler("bcast", broadcast_message))
     app.add_handler(CommandHandler("d", delete_msg)) 
     
-    # yahan filter update kar diya
+    # यहाँ अपना फाइनल फ़िल्टर लगा दिया
     app.add_handler(MessageHandler(final_smart_filter & filters.TEXT & ~filters.COMMAND, chat_with_karan))
     
-    print("✅ Karan (Bright) Live hai (DM aur Group dono ke fixed logic ke sath)!")
+    print("✅ Karan (Bright) Live hai (DM = Full Reply, Group = Smart Reply)!")
     app.run_polling()
-
     
