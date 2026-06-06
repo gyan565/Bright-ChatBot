@@ -156,7 +156,7 @@ if __name__ == '__main__':
     threading.Thread(target=run_web, daemon=True).start()
     app = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
     
-    smart_filter = filters.REPLY | filters.Entity(constants.MessageEntity.MENTION)
+    smart_filter = filters.REPLY | filters.Entity(constants.MessageEntityType.MENTION)
     
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_command)) # HELP COMMAND ADDED HERE
