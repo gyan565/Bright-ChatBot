@@ -156,14 +156,21 @@ if __name__ == '__main__':
     threading.Thread(target=run_web, daemon=True).start()
     app = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
     
-    smart_filter = filters.REPLY | filters.Entity(constants.MessageEntityType.MENTION)
+    # 🎯 Naya Smart Filter: DM me sabka reply, Group me sirf Reply/Mention ka
+    dm_filter = filters.ChatType.PRIVATE
+    group_filter = filters.ChatType.GROUPS & (filters.REPLY | filters.Entity(constants.MessageEntityType.MENTION))
+    
+    final_smart_filter = dm_filter | group_filter
     
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("help", help_command)) # HELP COMMAND ADDED HERE
+    app.add_handler(CommandHandler("help", help_command)) 
     app.add_handler(CommandHandler("bcast", broadcast_message))
-    app.add_handler(CommandHandler("d", delete_msg)) # DELETE COMMAND IS HERE
-    app.add_handler(MessageHandler(smart_filter & filters.TEXT & ~filters.COMMAND, chat_with_karan))
+    app.add_handler(CommandHandler("d", delete_msg)) 
     
-    print("✅ Karan (Bright) Live hai (Help & Delete Command ke sath)!")
+    # yahan filter update kar diya
+    app.add_handler(MessageHandler(final_smart_filter & filters.TEXT & ~filters.COMMAND, chat_with_karan))
+    
+    print("✅ Karan (Bright) Live hai (DM aur Group dono ke fixed logic ke sath)!")
     app.run_polling()
+
     
